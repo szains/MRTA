@@ -12,11 +12,47 @@ from S_set import S_set
 from Tau_Q_matrix import Tau_Q_matrix
 from Tau_S_k_dmatrix import Tau_S_k_dmatrix
 from ProgressBar import ProgressBar
-from Set import Set  # make sure it's imported at the top
 
 class Path_Planner(object):
     def __init__(self,parameters):
         self.parameters=parameters
+    
+    #old code is here
+
+    # def set_up(self,path):
+    #     print("Setting up path planner...\n")
+    #     print("...Defining sets...")
+    #     self.X=X_set(self)
+    #     self.U_x=U_x_function(self)
+    #     print("...Defining state transition dynamics...")
+    #     self.Tau_X=Tau_X_dmatrix(self)
+    #     self.y_sampler=y_sampler(self,path)
+    #     print("...Preparing matrices for dynamic programming algorithm...")
+    #     p_H_k_matrix.set_up(self)
+    #     print("Finished setting up path planner!\n")
+
+    # def set_up(self, path):
+    #     print("Setting up path planner...\n")
+    #     print("...Defining sets...")
+    #     self.X = X_set(self)
+
+    #     # Debugging: Check the size of X_set
+    #     print(f"Debugging X-set size: len(self.X) = {len(self.X)}")
+
+    #    # Ensure all hazard locations are included in X
+    #     for hazard in self.parameters.y_0:
+    #         for h_pos in hazard:  # Each hazard is a list of positions
+    #             if h_pos not in self.X:  # No need for `.positions`
+    #                 self.X.add(h_pos)  # Use `add()` since `X_set` extends `Set`
+
+
+    #     self.U_x = U_x_function(self)
+    #     print("...Defining state transition dynamics...")
+    #     self.Tau_X = Tau_X_dmatrix(self)
+    #     self.y_sampler = y_sampler(self, path)
+    #     print("...Preparing matrices for dynamic programming algorithm...")
+    #     p_H_k_matrix.set_up(self)
+    #     print("Finished setting up path planner!\n")
     def set_up(self, path):
         print("Setting up path planner...\n")
         print("...Defining sets...")
@@ -46,29 +82,19 @@ class Path_Planner(object):
         print("Finished setting up path planner!\n")
 
 
-    def get_solution(self, targets, goal, x_0, print_progress=False):
-        self.Q = Q_set(self, targets, goal)
-        self.QX = QX_set(self)
-        self.Tau_Q = Tau_Q_matrix(self)
-        self.S = S_set(self)
-        Tau_S_k_dmatrix.set_up(self)
-        Mu, V = self.solve_problem(print_progress)
 
-        if isinstance(x_0, list):
-            V_ret = []
-            for x_0_r in x_0:
-                try:
-                    V_ret.append(V[0].get([(Set([]), x_0_r)]))
-                except ValueError:
-                    print(f"Skipping invalid robot start position: {x_0_r}")
-            return V_ret, Mu, V
+    def get_solution(self,targets,goal,x_0,print_progress=False):
+        self.Q=Q_set(self,targets,goal)
+        self.QX=QX_set(self)
+        self.Tau_Q=Tau_Q_matrix(self)
+        self.S=S_set(self)
+        Tau_S_k_dmatrix.set_up(self)
+        Mu,V=self.solve_problem(print_progress)
+        if type(x_0) is list:
+            V_ret=[V[0].get([(set([]),x_0_r)]) for x_0_r in x_0]
         else:
-            try:
-                v_val = V[0].get([(Set([]), x_0)])
-                return v_val, Mu, V
-            except ValueError:
-                print(f"Invalid single start position: {x_0}")
-                return None, Mu, V
+            V_ret=V[0].get([(set([]),x_0)])
+        return V_ret,Mu,V
 
     def solve_problem(self,print_progress=False):
         N=self.parameters.N

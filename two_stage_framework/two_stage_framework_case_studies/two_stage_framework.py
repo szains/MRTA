@@ -14,8 +14,6 @@ from Brute_Force_Allocator import Brute_Force_Allocator
 from Graphs import plot_task_completion, plot_robot_utilization, plot_hazard_avoidance
 from Graphs import plot_hazard_avoidance
 from Graphs import plot_task_priority_heatmap, plot_priority_completion
-import random
-from Set import Set  # make sure it's imported at the top
 
 
 from collections import Counter
@@ -75,16 +73,9 @@ def sample_Tau_Ys(self,p_f,ys_k_1):
     return ys_k
 
 # Parameters
-example_name = "case_study_1"
-parameters = Parameters(name=example_name)
-open_case_study = False
-rel_path = f"/case_studies/{example_name}/"
-path = os.getcwd() + rel_path
-
-if not os.path.exists(path):
-    os.makedirs(path)
-
-
+example_name="case_study_1"
+parameters=Parameters(name=example_name)
+open_case_study=False
 
 parameters.map=np.array([[1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1],
                          [1,0,0,0,0,0,1,1,0,1,0,0,1,0,0,0,1],
@@ -100,107 +91,45 @@ parameters.map=np.array([[1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1],
                          [1,0,0,0,0,0,1,1,0,0,1,0,0,0,0,1,1],
                          [1,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1,1]])
 
-# Add this line to fix the error:
-parameters.size = (parameters.map.shape[1], parameters.map.shape[0])
+parameters.targets=[(3,9),(5,1),(8,6),(11,11),(14,1)]
+parameters.task_ids=["i","ii","iii","iv","v"]
 
-n_tasks = 10
-n_robots = 5
-near_hazard_tasks = 4
+#task priority defines
+task_priority = {
+    "i": 3,
+    "ii": 5,
+    "iii": 2,
+    "iv": 4,
+    "v": 1
+}
+parameters.task_priority = task_priority
 
-# Hazard setup
-parameters.y_0 = [[(13,12)], [(2,1)], [(11,2)], [(3,11)], [(13,6)]]
-parameters.hazard_ids = ["a", "b", "c", "d", "e"]
-parameters.p_f = [0.002, 0.004, 0.012, 0.012, 0.012]
 
-# Robot setup — defer positions for now, see below
+parameters.robot_positions=[(0,6),(8,12),(10,0)]
+parameters.robot_ids=["1","2","3"]
+parameters.robot_linestyles=[(0,()),(0,(3,3)),(0,(1,2))]
 
-# Task setup
-parameters.task_ids = [f"t{i+1}" for i in range(n_tasks)]
-parameters.targets = []
+parameters.y_0=[[(13,12)],[(2,1)],[(11,2)],[(3,11)],[(13,6)]]
+parameters.hazard_ids=["a","b","c","d","e"]
+parameters.p_f=[0.002,0.004,0.012,0.012,0.012]
 
-# Place some tasks near hazard zones
-for hz in parameters.y_0[:near_hazard_tasks]:
-    x, y = hz[0]
-    tx = x + random.choice([-1, 0, 1])
-    ty = y + random.choice([-1, 0, 1])
-    parameters.targets.append((tx, ty))
+parameters.goal=(16,9)
+parameters.E=5000
+parameters.N=75
+parameters.p_stay=0
 
-# Place remaining tasks safely
-while len(parameters.targets) < n_tasks:
-    x = random.randint(0, parameters.map.shape[1] - 1)
-    y = random.randint(0, parameters.map.shape[0] - 1)
-    if parameters.map[y][x] == 0:
-        parameters.targets.append((x, y))
-
-# Assign descending priorities
-parameters.task_priority = {t_id: n_tasks - i for i, t_id in enumerate(parameters.task_ids)}
-
-# Other environment settings
-parameters.goal = (16, 9)
-parameters.E = 5000
-parameters.N = 75
-parameters.p_stay = 0
-
-# Generate obstacle and hazard maps
 parameters.generate_obsticles()
 parameters.generate_Hazards()
-
-# Bind dynamic function hooks
-parameters.generate_Tau_X = generate_Tau_X
-parameters.sample_Tau_Ys = sample_Tau_Ys
-
-# File management setup
-parameters_file = {"Read": open_case_study, "Name": "parameters"}
-samples_file = {"Read": open_case_study, "Name": "samples"}
-function_frame_file = {"Read": open_case_study, "Name": "function_frame"}
-solution_file = {"Read": open_case_study, "Name": "solution"}
-
-parameters.parameters_file = parameters_file
-parameters.samples_file = samples_file
-parameters.function_frame_file = function_frame_file
-parameters.solution_file = solution_file
-
-# Planner setup
-path_planner = Path_Planner(parameters)
-path_planner.set_up(path)
-
-# Validate robot positions AFTER path_planner is ready
-valid_X = list(path_planner.X)
-random.shuffle(valid_X)
-
-if len(valid_X) < n_robots:
-    raise ValueError("Not enough valid positions to place all robots.")
-
-robot_ids = [f"r{i+1}" for i in range(n_robots)]
-robot_positions = valid_X[:n_robots]
-base_styles = [(0,()), (0,(3,3)), (0,(1,2)), (0,(2,4)), (0,(1,1)), (0,(5,2,2,2))]
-
-# Assign robots and tasks
 parameters.generate_Tasks()
-# Extract safe robot start positions directly from V[0]'s domain
-Mu, V = path_planner.solve_problem(print_progress=True)
-
-# ✅ Extract robot start positions from V[0]'s domain with empty task set
-
-robot_start_candidates = [x for (s, x) in V[0].domain if s == Set([])]
-random.shuffle(robot_start_candidates)
-
-if len(robot_start_candidates) < n_robots:
-    raise ValueError("Not enough valid start positions in V[0].domain")
-
-parameters.robot_ids = [f"r{i+1}" for i in range(n_robots)]
-parameters.robot_positions = robot_start_candidates[:n_robots]
-
-# Apply line styles (optional)
-base_styles = [(0,()), (0,(3,3)), (0,(1,2)), (0,(2,4)), (0,(1,1)), (0,(5,2,2,2))]
-parameters.robot_linestyles = base_styles[:n_robots]
-
-# Generate robot objects using now-validated positions
 parameters.generate_Robots()
 
-# Then generate robots based on those valid starts
-parameters.generate_Robots()
+parameters.generate_Tau_X=generate_Tau_X
+parameters.sample_Tau_Ys=sample_Tau_Ys
 
+parameters_file={"Read":open_case_study,"Name":"parameters"}
+samples_file={"Read":open_case_study,"Name":"samples"}
+function_frame_file={"Read":open_case_study,"Name":"function_frame"}
+solution_file={"Read":open_case_study,"Name":"solution"}
 
 ### Main ###
 warnings.filterwarnings("ignore")
@@ -220,6 +149,10 @@ else:
     pickle.dump(parameters,outfile)
     outfile.close()
 
+parameters.parameters_file=parameters_file
+parameters.samples_file=samples_file
+parameters.function_frame_file=function_frame_file
+parameters.solution_file=solution_file
 
 # Setting up
 path_planner=Path_Planner(parameters)
@@ -251,7 +184,10 @@ else:
     allocator_fg.postprocess_solution(fg_solution)
     fg_solution.save_solution(path+parameters.solution_file["Name"]+"_fg")
 allocator_fg.show_solution(fg_solution)
-
+# print(fg_solution.allocation.__dict__)
+#allocator_fg.draw_solution_step_by_step(fg_solution,5)
+# print("FG Allocation contents:", fg_solution.allocation.__dict__)
+# print("Allocation dir():", dir(fg_solution.allocation))
 for e in fg_solution.allocation:
     print("FG allocation element:", e)
     break  # Just to peek at one element
@@ -303,3 +239,40 @@ plot_hazard_avoidance(path_planner.hazard_avoidance_data)
 plot_priority_completion(fg_solution.allocation, parameters.task_priority, parameters.robot_ids)
 plot_task_priority_heatmap(parameters.tasks, parameters.task_priority)
 
+
+# task_completion_data = [len(fg_solution.tasks_completed), 
+#                         len(rg_solution.tasks_completed), 
+#                         len(bf_solution.tasks_completed)]
+
+# task_completion_data = [
+#     len(set(pair[1] for pair in fg_solution.allocation.pairs)),
+#     len(set(pair[1] for pair in rg_solution.allocation.pairs)),
+#     len(set(pair[1] for pair in bf_solution.allocation.pairs))
+# ]
+
+
+# task_completion_data = [
+#     len(set(task_id for _, task_id in fg_solution.allocation.data)),
+#     len(set(task_id for _, task_id in rg_solution.allocation.data)),
+#     len(set(task_id for _, task_id in bf_solution.allocation.data))
+# ]
+
+# task_completion_data = [
+#     len(set(task for _, task in fg_solution.allocation)),
+#     len(set(task for _, task in rg_solution.allocation)),
+#     len(set(task for _, task in bf_solution.allocation))
+# ]
+
+
+
+# robot_utilization_data = {robot: function_frame.get_robot_utilization(robot) for robot in parameters.robot_ids}
+
+# fg_utilization = compute_robot_utilization(fg_solution.allocation, parameters.robot_ids)
+# plot_robot_utilization(fg_utilization)
+
+
+# fg_util = get_robot_workload_percentages(fg_solution)
+# plot_robot_utilization(fg_util)
+# plot_task_completion(task_completion_data)
+# plot_robot_utilization(robot_utilization_data)
+# plot_hazard_avoidance(path_planner.hazard_avoidance_data)
