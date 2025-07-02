@@ -10,20 +10,13 @@ class Forward_Greedy_Allocator(Greedy_Allocator):
     def __init__(self,function_frame):
         super().__init__(function_frame)
         self.algorithm_name="Forward_Greedy"
-        S_r_0 = Set(self.tasks)
+        S_r_0=Set([])
         self.set_up(S_r_0)
 
     def solve_problem(self):
-        N = len(self.robots[0].S_r)  # Safely gets task count from robot’s set
-        if not N:
-            raise ValueError("No tasks available: make sure allocator is properly initialized.")
-        forward_greedy_solution = super().solve_problem(N)
+        N=len(self.tasks)
+        forward_greedy_solution=super().solve_problem(N)
         return forward_greedy_solution
-    
-    def get_task_priority(self, r, a):
-        """Return pre-assigned task priority or fallback to zero."""
-        return self.function_frame.parameters.task_priority.get(a.id, 0)
-
 
     # def make_step(self,V_k_1,R_k_1):
     #     rho_F_vec,f_F_vec,t_F_vec=self.collect_bets(V_k_1,R_k_1)
@@ -80,18 +73,13 @@ class Forward_Greedy_Allocator(Greedy_Allocator):
             a_k = self.reassign_task(r_k, V_k_1)  # Modify task selection if needed
 
         if a_k is None:
-            print(f"[Step] Fallback: Assigning first available task to robot {r_k.id}")
-            a_k = next(iter(V_k_1), None)
-            if a_k is None:
-                print("No tasks left to assign.")
-                return V_k_1, R_k_1
-
+            print(f"Warning: No valid task found for robot {r_k.id}, skipping assignment.")
+            return V_k_1, R_k_1  # Skip this step if no valid task exists
         self.history.add((r_k.id, a_k.id))
         r_k.S_r.add(a_k)
         r_k.f_r -= r_k.rho_r
 
-        V_k = copy.copy(V_k_1)
-        V_k.remove(a_k)
+        V_k = V_k_1.remove(a_k)
         R_k = Set([r for r in self.robots if r.a_r == a_k])
 
         return V_k, R_k
@@ -119,10 +107,9 @@ class Forward_Greedy_Allocator(Greedy_Allocator):
         battery_threshold = 20  # Define a threshold for battery reassignment
         hazard_threshold = 5  # Define a proximity threshold for hazards
 
-        if len(self.tasks) <= 2:
-            return True  # Let robots accept any task in small task cases
-        return not (r.battery_level < battery_threshold or r.hazard_proximity < hazard_threshold)
-
+        if r.battery_level < battery_threshold or r.hazard_proximity < hazard_threshold:
+            return True  # Reassign if battery is too low or hazard is too close
+        return False  # Otherwise, keep the current assignment
 
     def is_safe_assignment(self, r, a):
         """Check if assigning task 'a' to robot 'r' is safe based on battery level and hazards."""

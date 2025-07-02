@@ -30,7 +30,6 @@ class Greedy_Allocator(Task_Allocator):
         print("Setting up task allocator...")
         self.instrument.start()
         setup_time=0
-        self.tasks = list(S_r_0)  # ✅ Fix: set self.tasks here
         for r in self.robots:
             r.S_r=copy.copy(S_r_0)
             # f_r,time_f_r=r.objective.get_value(r.S_r,print_progress=True)
@@ -45,8 +44,6 @@ class Greedy_Allocator(Task_Allocator):
         print("Finished setting up task allocator!\n")
 
     def solve_problem(self,N):
-        if not N or N <= 0:
-            raise ValueError("Greedy allocator requires a positive integer for N.")
         print("Solving allocation problem...")
         self.instrument.start()
         V_k_1=copy.copy(self.tasks)

@@ -106,19 +106,10 @@ class Drawer(object):
         plt.show()
 
     def draw_path_for_all_robots(self, paths, robots, tasks):
-        for robot_id, p in paths.items():  # ✅ use correct parameter name
-            try:
-                n_steps = p.matrix.shape[0]  # Assuming p.matrix is a NumPy array (time steps × states)
-            except AttributeError:
-                n_steps = "unknown"
-
-            print(f"🛤️ Robot {robot_id} path steps: {n_steps} | Path type: {type(p).__name__}")
         fig, ax = self.get_map_drawing(robots, tasks, legend=True, labels=True)
 
         for i, robot in enumerate(robots):
-            robot_id = robot.id
-            path = paths[robot_id]
-            # path = paths[i]
+            path = paths[i]
             N = len(path.domain[0])
 
             d_list = []
@@ -136,11 +127,6 @@ class Drawer(object):
                     x_list = x_list + [x_t]
 
             shift = 0.075 + i * 0.15
-
-            if not d_list:
-                print(f" Skipping robot with empty or static path: {path}")
-                continue
-
 
             e_0 = np.array([[0, 1], [-1, 0]]).dot(d_list[0])
             x_sh_0 = x_list[0] + shift * e_0
@@ -198,10 +184,6 @@ class Drawer(object):
                         x_list = x_list + [x_t]
 
                 shift = 0.075 + (len(robots) - 1 - i) * 0.15
-
-                if not d_list:
-                    print(f" Skipping robot with empty or static path: {path}")
-                    continue
 
                 e_0 = np.array([[0, 1], [-1, 0]]).dot(d_list[0])
                 x_sh_0 = x_list[0] + shift * e_0

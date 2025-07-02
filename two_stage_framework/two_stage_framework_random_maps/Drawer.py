@@ -106,8 +106,6 @@ class Drawer(object):
         plt.show()
 
     def draw_path_for_all_robots(self,paths,robots,tasks):
-        for robot_id, p in path.items():
-            print(f"Robot {robot_id} path length: {len(p)}")
         fig,ax=self.get_map_drawing(robots,tasks,legend=True,labels=True)
                 
         for i,robot in enumerate(robots):
@@ -129,10 +127,6 @@ class Drawer(object):
                     x_list=x_list+[x_t]
              
             shift=0.075+i*0.15
-
-            if not d_list:
-                print(f"Skipping robot with empty path segment: {path}")
-                continue
             
             e_0=np.array([[0,1],[-1,0]]).dot(d_list[0])
             x_sh_0=x_list[0]+shift*e_0
@@ -192,10 +186,6 @@ class Drawer(object):
                         x_list=x_list+[x_t]
              
                 shift=0.075+(len(robots)-1-i)*0.15
-
-                if not d_list:
-                    print(f"Skipping robot with empty path segment: {path}")
-                    continue
             
                 e_0=np.array([[0,1],[-1,0]]).dot(d_list[0])
                 x_sh_0=x_list[0]+shift*e_0

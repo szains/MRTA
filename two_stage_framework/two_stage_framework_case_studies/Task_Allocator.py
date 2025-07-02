@@ -4,7 +4,6 @@ import copy
 from Allocation import Allocation
 from Drawer import Drawer
 from Instrument import Instrument
-from Set import Set
 
 class Task_Allocator(object):
     def __init__(self,function_frame):
@@ -28,9 +27,6 @@ class Task_Allocator(object):
         solution=self.add_optimal_policies(solution)
         solution=self.add_optimal_paths(solution)
         solution=self.add_group_objective(solution)
-        if not solution or not solution.allocation:
-         print("⚠️ Skipping postprocessing — solution is missing allocation.")
-        return
 
     def show_solution(self,solution):
         solution.print_solution()
@@ -44,7 +40,7 @@ class Task_Allocator(object):
         V_ret=[]
         for r in self.robots:
             allocation_r=allocation.loc["robot_"+str(r.id)].to_numpy(dtype=bool)
-            S_r = Set(self.tasks).subset(allocation_r)
+            S_r=self.tasks.subset(allocation_r)
 
             targets_r=[e.target for e in S_r]
             goal_r=r.goal
@@ -88,11 +84,7 @@ class Task_Allocator(object):
 
     def draw_solution(self,solution):
         drawer=Drawer(self.path_planner)
-        # drawer.draw_path_for_all_robots(solution.path,self.robots,self.tasks)
-        # Extract robot IDs and zip them to form a proper dictionary
-        robot_ids = [robot.id for robot in self.robots]
-        path_dict = {r_id: p for r_id, p in zip(robot_ids, solution.path)}
-        drawer.draw_path_for_all_robots(path_dict, self.robots, self.tasks)
+        drawer.draw_path_for_all_robots(solution.path,self.robots,self.tasks)
 
     def draw_solution_step_by_step(self,solution,k_delta):
         drawer=Drawer(self.path_planner)

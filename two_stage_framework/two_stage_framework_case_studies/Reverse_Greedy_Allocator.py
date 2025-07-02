@@ -9,19 +9,13 @@ class Reverse_Greedy_Allocator(Greedy_Allocator):
     def __init__(self,function_frame):
         super().__init__(function_frame)
         self.algorithm_name="Reverse_Greedy"
-        S_r_0 = Set(self.tasks)  
+        S_r_0=self.tasks
         self.set_up(S_r_0)
 
     def solve_problem(self):
-        N = len(self.robots[0].S_r)  # Safely gets task count from robot’s set
-        if not N:
-            raise ValueError("No tasks available: make sure allocator is properly initialized.")
-        forward_greedy_solution = super().solve_problem(N)
-        return forward_greedy_solution
-    
-    def get_task_priority(self, r, a):
-        """Return pre-assigned task priority or fallback to zero."""
-        return self.function_frame.parameters.task_priority.get(a.id, 0)
+        N=len(self.tasks)*(len(self.robots)-1)
+        reverse_greedy_solution=super().solve_problem(N)
+        return reverse_greedy_solution
 
     # def make_step(self,V_k_1,R_k_1):
     #     rho_F_vec,f_F_vec,t_F_vec=self.collect_bets(V_k_1,R_k_1)
@@ -125,8 +119,7 @@ class Reverse_Greedy_Allocator(Greedy_Allocator):
         r_k.S_r.add(a_k)
         r_k.f_r -= r_k.rho_r
 
-        V_k = copy.copy(V_k_1)
-        V_k.remove(a_k)
+        V_k = V_k_1.remove(a_k)
         R_k = Set([r for r in self.robots if r.a_r == a_k])
 
 
@@ -162,9 +155,7 @@ class Reverse_Greedy_Allocator(Greedy_Allocator):
         a_r = None
         bet_time = 0
         for a in V_k_1:
-            # S_r_a = copy.copy(r.S_r).add(a)
-            S_r_a = copy.copy(r.S_r)
-            S_r_a.add(a)
+            S_r_a = copy.copy(r.S_r).add(a)
             f_r_a, time_f_r_a = r.objective.get_value(S_r_a)
             hazard_penalty = self.calculate_hazard_penalty(r, a)  # Penalize hazardous tasks
             battery_factor = self.get_battery_factor(r)  # Adjust selection based on battery level

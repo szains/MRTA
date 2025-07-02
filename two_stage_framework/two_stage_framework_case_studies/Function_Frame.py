@@ -55,7 +55,6 @@ class Function_Frame(DMatrix):
         N=len(task_subsets)
         progress_bar=ProgressBar(N)
         for i_allocation,target_allocation in enumerate(task_subsets):
-            print(f"  → [{i_allocation+1}/{N}] Evaluating allocation with tasks: {[a.id for a in target_allocation]}")
             progress_bar.progress(i_allocation)
             V_ret,Mu,V,t_eval=self.get_all_function_values(target_allocation)
             #save Mu and V ???

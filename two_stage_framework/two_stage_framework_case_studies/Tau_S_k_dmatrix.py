@@ -3,8 +3,6 @@ import numpy as np
 from Matrix import Matrix
 from DMatrix import DMatrix
 from p_H_k_matrix import p_H_k_matrix
-from scipy import sparse
-
 
 class Tau_S_k_dmatrix(DMatrix):
     domain=None
@@ -35,11 +33,7 @@ class Tau_S_k_dmatrix(DMatrix):
         Tau_QX_exp.set_domains(Tau_S_k_dmatrix.domain_dict,Tau_S_k_dmatrix.domain_matrix)
         n_exp_X=int(len(Tau_S_k_dmatrix.S.QX)/len(Tau_S_k_dmatrix.Tau_X.domain_matrix[0]))
         for u in Tau_S_k_dmatrix.Tau_X.keys():
-            # Tau_X_exp_u=np.kron(np.ones((n_exp_X,n_exp_X)),Tau_S_k_dmatrix.Tau_X[u].matrix)
-            Tau_X_exp_u = sparse.kron(
-                sparse.csr_matrix(np.ones((n_exp_X, n_exp_X))),
-                sparse.csr_matrix(Tau_S_k_dmatrix.Tau_X[u].matrix)
-            )
+            Tau_X_exp_u=np.kron(np.ones((n_exp_X,n_exp_X)),Tau_S_k_dmatrix.Tau_X[u].matrix)
             Tau_QX_exp[u]=Tau_Q_exp*Tau_X_exp_u
         return Tau_QX_exp
 
