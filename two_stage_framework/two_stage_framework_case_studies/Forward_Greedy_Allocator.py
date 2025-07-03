@@ -18,27 +18,6 @@ class Forward_Greedy_Allocator(Greedy_Allocator):
         forward_greedy_solution=super().solve_problem(N)
         return forward_greedy_solution
 
-    # def make_step(self,V_k_1,R_k_1):
-    #     rho_F_vec,f_F_vec,t_F_vec=self.collect_bets(V_k_1,R_k_1)
-    #     i_r_k=np.argmin(rho_F_vec)
-
-    #     r_k=self.robots[i_r_k]
-    #     a_k=r_k.a_r
-    #     self.history.add((r_k.id,a_k.id))
-
-    #     r_k.S_r.add(a_k)
-    #     r_k.f_r=r_k.f_r-r_k.rho_r
-    #     V_k=V_k_1.remove(a_k)
-    #     R_k=Set([r for r in self.robots if r.a_r==a_k])
-
-        """
-        print("\n Step:\n")
-        print("   - rho_F_vec=",rho_F_vec)
-        print("   - f_F_vec=",f_F_vec)
-        print("   - t_F_vec=",t_F_vec)
-        print("   - (a_k,r_k)=(",str(a_k.id),",",str(r_k.id),")")
-        """
-        # return V_k,R_k
     
     # new code by zain shah
 
@@ -102,6 +81,17 @@ class Forward_Greedy_Allocator(Greedy_Allocator):
         else:
             return (battery_threshold - r.battery_level) * 0.1  # Increasing penalty as battery decreases
         
+        #task priority code
+    def compute_priority_score(self, r, a, weights):
+        distance_to_task = distance(r.x_0, a.x_0)  # assuming 'a' has x_0 attribute
+        hazard_penalty = self.calculate_hazard_penalty(r, a)
+        task_urgency = getattr(a, 'urgency', 1.0)  # fallback if not set
+        robot_health = r.battery_level * r.sensor_health
+
+        α, β, γ, δ = weights
+        return α * distance_to_task + β * hazard_penalty - γ * task_urgency - δ * robot_health
+
+        
     def should_reassign(self, r):
         """Determine whether a robot should reassign its task based on battery level or hazard proximity."""
         battery_threshold = 20  # Define a threshold for battery reassignment
@@ -126,29 +116,13 @@ class Forward_Greedy_Allocator(Greedy_Allocator):
         alternative_tasks = [a for a in V_k_1 if self.is_safe_assignment(r, a)]
         
         if alternative_tasks:
-            return max(alternative_tasks, key=lambda a: self.get_task_priority(r, a))  
+            weights = (1.0, 2.0, 1.5, 0.5)  # Tune as needed
+            return min(alternative_tasks, key=lambda a: self.compute_priority_score(r, a, weights))
+            # return max(alternative_tasks, key=lambda a: self.get_task_priority(r, a))  
         else:
             print(f"Warning: No safe tasks for robot {r.id}, assigning default task.")
             return next(iter(V_k_1), None)  # Assign first available task, or None if empty
 
-
-
-
-    # def place_bet(self,r,V_k_1):
-    #     rho_r=float('inf')
-    #     a_r=None
-    #     bet_time=0
-    #     for a in V_k_1:
-    #         S_r_a=copy.copy(r.S_r).add(a)
-    #         f_r_a,time_f_r_a=r.objective.get_value(S_r_a)
-    #         rho_r_a=r.f_r-f_r_a
-    #         if rho_r_a<rho_r:
-    #             rho_r=rho_r_a
-    #             a_r=a
-    #         bet_time=bet_time+time_f_r_a
-    #     r.rho_r=rho_r
-    #     r.a_r=a_r
-    #     return bet_time
 
     # new code by zain shah
     def place_bet(self, r, V_k_1):

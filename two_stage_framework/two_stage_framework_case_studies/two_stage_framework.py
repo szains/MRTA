@@ -240,39 +240,3 @@ plot_priority_completion(fg_solution.allocation, parameters.task_priority, param
 plot_task_priority_heatmap(parameters.tasks, parameters.task_priority)
 
 
-# task_completion_data = [len(fg_solution.tasks_completed), 
-#                         len(rg_solution.tasks_completed), 
-#                         len(bf_solution.tasks_completed)]
-
-# task_completion_data = [
-#     len(set(pair[1] for pair in fg_solution.allocation.pairs)),
-#     len(set(pair[1] for pair in rg_solution.allocation.pairs)),
-#     len(set(pair[1] for pair in bf_solution.allocation.pairs))
-# ]
-
-
-# task_completion_data = [
-#     len(set(task_id for _, task_id in fg_solution.allocation.data)),
-#     len(set(task_id for _, task_id in rg_solution.allocation.data)),
-#     len(set(task_id for _, task_id in bf_solution.allocation.data))
-# ]
-
-# task_completion_data = [
-#     len(set(task for _, task in fg_solution.allocation)),
-#     len(set(task for _, task in rg_solution.allocation)),
-#     len(set(task for _, task in bf_solution.allocation))
-# ]
-
-
-
-# robot_utilization_data = {robot: function_frame.get_robot_utilization(robot) for robot in parameters.robot_ids}
-
-# fg_utilization = compute_robot_utilization(fg_solution.allocation, parameters.robot_ids)
-# plot_robot_utilization(fg_utilization)
-
-
-# fg_util = get_robot_workload_percentages(fg_solution)
-# plot_robot_utilization(fg_util)
-# plot_task_completion(task_completion_data)
-# plot_robot_utilization(robot_utilization_data)
-# plot_hazard_avoidance(path_planner.hazard_avoidance_data)

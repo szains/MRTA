@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import matplotlib.cm as cm
+import matplotlib.colorbar as colorbar
 
 class Drawer(object):
     def __init__(self, path_planner):
@@ -31,7 +33,7 @@ class Drawer(object):
         # Change color of obstacles and their positions
         x_obsticles = [e[0] for e in self.parameters.obsticles]
         y_obsticles = [e[1] for e in self.parameters.obsticles]
-        plt.scatter(x_obsticles, y_obsticles, color='orange', marker="s", s=300, label="Obstacles")  # Orange color for obstacles
+        plt.scatter(x_obsticles, y_obsticles, color='gray', marker="s", s=300, label="Obstacles")  # Orange color for obstacles
 
         # Change color and positions for hazards
         x_hazards = []
@@ -42,7 +44,7 @@ class Drawer(object):
             if labels:
                 for y_0_h in hazard.y_0:
                     plt.text(y_0_h[0], y_0_h[1], str(hazard.id), color='w', fontsize=9, fontweight='bold', horizontalalignment='center', verticalalignment='center')
-        plt.scatter(x_hazards, y_hazards, color='purple', marker="o", s=200, label="Hazards")  # Purple color for hazards
+        plt.scatter(x_hazards, y_hazards, color='black', marker="o", s=200, label="Hazards")  # Purple color for hazards
 
         # Change color and positions for robots
         x_robots = []
@@ -52,26 +54,42 @@ class Drawer(object):
             y_robots = y_robots + [robot.x_0[1]]
             if labels:
                 plt.text(robot.x_0[0], robot.x_0[1], str(robot.id), color='w', fontsize=9, fontweight='bold', horizontalalignment='center', verticalalignment='center')
-        plt.scatter(x_robots, y_robots, color='blue', marker="o", s=200, label="Robots")  # Blue color for robots
+        plt.scatter(x_robots, y_robots, color='green', marker="o", s=200, label="Robots")  # Blue color for robots
 
         # Change color and positions for tasks
         x_tasks = []
         y_tasks = []
         for task in tasks:
-            x_tasks = x_tasks + [task.target[0]]
-            y_tasks = y_tasks + [task.target[1]]
+            x = task.target[0]
+            y = task.target[1]
+            urgency = getattr(task, 'urgency', 1.0)
+
+            color = plt.cm.Reds(min(urgency / 10.0, 1.0))
+            plt.scatter(x, y, color=color, marker="o", s=200)
+
+            plt.text(x, y + 1.0, f"U:{task.urgency:.1f}\nT:{task.time_waited}",
+            fontsize=7, color='gray', ha='center', va='center', zorder=3)
+
+
+            #Add time waited label just above the task
+            # plt.text(x, y + 0.7, f"T:{task.time_waited}", fontsize=6, color='gray', ha='center')
+
             if labels:
-                plt.text(task.target[0], task.target[1], str(task.id), color='w', fontsize=9, fontweight='bold', horizontalalignment='center', verticalalignment='center')
-        plt.scatter(x_tasks, y_tasks, color='green', marker="o", s=200, label="Targets")  # Green color for tasks
+                plt.text(x, y, str(task.id), color='white', fontsize=9, weight='bold', ha='center', va='center')
+
+
 
         # Change goal color and position
         x_goal = self.parameters.goal[0]
         y_goal = self.parameters.goal[1]
         plt.scatter(x_goal, y_goal, color='cyan', marker=">", s=250, label="Goal")  # Cyan color for goal
 
-        plt.grid(which='minor', linestyle=":", color='k', lw=0.5)  # Grid lines
+        plt.grid(which='minor', linestyle="--", color='lightgray', lw=0.8)  # Grid lines
         if legend:
             legend = plt.legend(bbox_to_anchor=(0., 1.05, 1., 0.05), loc='lower left', ncol=5, mode="expand", borderaxespad=0., handletextpad=0.4, fontsize=12, markerscale=0.8)
+            sm = plt.cm.ScalarMappable(cmap='Reds', norm=plt.Normalize(vmin=1, vmax=10))
+            sm.set_array([])
+            plt.colorbar(sm, ax=ax, label="Task Urgency")
         return fig, ax
 
     def draw_hazard_heat_map(self, fig, ax, k):
@@ -108,6 +126,7 @@ class Drawer(object):
     def draw_path_for_all_robots(self, paths, robots, tasks):
         fig, ax = self.get_map_drawing(robots, tasks, legend=True, labels=True)
 
+        # Draw each robot's path
         for i, robot in enumerate(robots):
             path = paths[i]
             N = len(path.domain[0])
@@ -120,50 +139,69 @@ class Drawer(object):
                     x_t_1 = path.domain[1][np.where(path.matrix[t + 1, :])[0][0]]
                     if x_t_1 != x_t:
                         d_t = np.array(x_t_1) - np.array(x_t)
-                        d_list = d_list + [d_t]
-                        x_list = x_list + [x_t]
+                        d_list.append(d_t)
+                        x_list.append(x_t)
                 else:
                     x_t = path.domain[1][np.where(path.matrix[t, :])[0][0]]
-                    x_list = x_list + [x_t]
+                    x_list.append(x_t)
 
             shift = 0.075 + i * 0.15
 
             e_0 = np.array([[0, 1], [-1, 0]]).dot(d_list[0])
             x_sh_0 = x_list[0] + shift * e_0
             x_sh_list = [x_sh_0]
+
             for t in range(1, len(d_list)):
                 d_t_1 = d_list[t - 1]
                 d_t = d_list[t]
-                if np.any(np.array([[1, 0], [0, 1]]).dot(d_t_1) - d_t) == 0:
+                if np.all(np.array([[1, 0], [0, 1]]).dot(d_t_1) - d_t == 0):
                     e_t = np.array([[0, 1], [-1, 0]]).dot(d_t)
                     x_sh_t = x_list[t] + shift * e_t
-                    x_sh_list = x_sh_list + [x_sh_t]
-                elif np.any(np.array([[0, 1], [-1, 0]]).dot(d_t_1) - d_t) == 0:
+                    x_sh_list.append(x_sh_t)
+                elif np.all(np.array([[0, 1], [-1, 0]]).dot(d_t_1) - d_t == 0):
                     e_t = -d_t_1 + d_t
                     x_sh_t = x_list[t] + shift * e_t
-                    x_sh_list = x_sh_list + [x_sh_t]
-                elif np.any(np.array([[0, -1], [1, 0]]).dot(d_t_1) - d_t) == 0:
+                    x_sh_list.append(x_sh_t)
+                elif np.all(np.array([[0, -1], [1, 0]]).dot(d_t_1) - d_t == 0):
                     e_t = d_t_1 - d_t
                     x_sh_t = x_list[t] + shift * e_t
-                    x_sh_list = x_sh_list + [x_sh_t]
+                    x_sh_list.append(x_sh_t)
                 else:
                     e_t_1 = d_t_1 + np.array([[0, 1], [-1, 0]]).dot(d_t_1)
-                    x_sh_t_1 = x_list[t] + shift * e_t_1
                     e_t_2 = d_t_1 + np.array([[0, 1], [-1, 0]]).dot(d_t)
+                    x_sh_t_1 = x_list[t] + shift * e_t_1
                     x_sh_t_2 = x_list[t] + shift * e_t_2
-                    x_sh_list = x_sh_list + [x_sh_t_1, x_sh_t_2]
+                    x_sh_list.extend([x_sh_t_1, x_sh_t_2])
+
             e_last = np.array([[0, 1], [-1, 0]]).dot(d_list[-1])
             x_sh_last = x_list[-1] + shift * e_last
-            x_sh_list = x_sh_list + [x_sh_last]
+            x_sh_list.append(x_sh_last)
 
             x_sh_list_x = [e[0] for e in x_sh_list]
             x_sh_list_y = [e[1] for e in x_sh_list]
 
             plt.plot(x_sh_list_x, x_sh_list_y, zorder=2, color='b', linestyle=robot.linestyle, linewidth=2)
+
+        # Draw assignment arrows + labels (outside path loop to avoid repetition)
+        for robot in robots:
+            if hasattr(robot, 'assigned_task') and robot.assigned_task:
+                x0, y0 = robot.x_0
+                xt, yt = robot.assigned_task.target
+                dx, dy = xt - x0, yt - y0
+
+                plt.arrow(x0, y0, dx, dy, head_width=0.3, head_length=0.3,
+                        fc='purple', ec='purple', linestyle='--', alpha=0.6, zorder=1)
+
+                mid_x = (x0 + xt) / 2
+                mid_y = (y0 + yt) / 2
+                plt.text(mid_x, mid_y + 0.7, f"R{robot.id}", fontsize=7,
+                        color='purple', ha='center', va='center', zorder=2)
+
         plt.show()
 
     def draw_path_for_all_robots_step_by_step(self, paths, robots, tasks, k):
         fig, ax = self.get_map_drawing_step_by_step(robots, tasks, k, legend=True, labels=True)
+
         if k > 0:
             for i, robot in enumerate(robots):
                 path = paths[i]
@@ -171,54 +209,67 @@ class Drawer(object):
 
                 d_list = []
                 x_list = []
-                for t in range(0, N):
+                for t in range(N):
+                    x_t = path.domain[1][np.where(path.matrix[t, :])[0][0]]
                     if t < N - 1:
-                        x_t = path.domain[1][np.where(path.matrix[t, :])[0][0]]
                         x_t_1 = path.domain[1][np.where(path.matrix[t + 1, :])[0][0]]
                         if x_t_1 != x_t:
                             d_t = np.array(x_t_1) - np.array(x_t)
-                            d_list = d_list + [d_t]
-                            x_list = x_list + [x_t]
+                            d_list.append(d_t)
+                            x_list.append(x_t)
                     else:
-                        x_t = path.domain[1][np.where(path.matrix[t, :])[0][0]]
-                        x_list = x_list + [x_t]
+                        x_list.append(x_t)
 
                 shift = 0.075 + (len(robots) - 1 - i) * 0.15
-
                 e_0 = np.array([[0, 1], [-1, 0]]).dot(d_list[0])
                 x_sh_0 = x_list[0] + shift * e_0
                 x_sh_list = [x_sh_0]
+
                 for t in range(1, min(k, len(d_list))):
                     d_t_1 = d_list[t - 1]
                     d_t = d_list[t]
-                    if np.any(np.array([[1, 0], [0, 1]]).dot(d_t_1) - d_t) == 0:
+                    if np.all(np.array([[1, 0], [0, 1]]).dot(d_t_1) - d_t == 0):
                         e_t = np.array([[0, 1], [-1, 0]]).dot(d_t)
-                        x_sh_t = x_list[t] + shift * e_t
-                        x_sh_list = x_sh_list + [x_sh_t]
-                    elif np.any(np.array([[0, 1], [-1, 0]]).dot(d_t_1) - d_t) == 0:
+                        x_sh_list.append(x_list[t] + shift * e_t)
+                    elif np.all(np.array([[0, 1], [-1, 0]]).dot(d_t_1) - d_t == 0):
                         e_t = -d_t_1 + d_t
-                        x_sh_t = x_list[t] + shift * e_t
-                        x_sh_list = x_sh_list + [x_sh_t]
-                    elif np.any(np.array([[0, -1], [1, 0]]).dot(d_t_1) - d_t) == 0:
+                        x_sh_list.append(x_list[t] + shift * e_t)
+                    elif np.all(np.array([[0, -1], [1, 0]]).dot(d_t_1) - d_t == 0):
                         e_t = d_t_1 - d_t
-                        x_sh_t = x_list[t] + shift * e_t
-                        x_sh_list = x_sh_list + [x_sh_t]
+                        x_sh_list.append(x_list[t] + shift * e_t)
                     else:
                         e_t_1 = d_t_1 + np.array([[0, 1], [-1, 0]]).dot(d_t_1)
-                        x_sh_t_1 = x_list[t] + shift * e_t_1
                         e_t_2 = d_t_1 + np.array([[0, 1], [-1, 0]]).dot(d_t)
-                        x_sh_t_2 = x_list[t] + shift * e_t_2
-                        x_sh_list = x_sh_list + [x_sh_t_1, x_sh_t_2]
+                        x_sh_list.extend([x_list[t] + shift * e_t_1, x_list[t] + shift * e_t_2])
+
                 if min(k, len(d_list)) == len(d_list):
                     e_last = np.array([[0, 1], [-1, 0]]).dot(d_list[-1])
                     x_sh_last = x_list[-1] + shift * e_last
-                    x_sh_list = x_sh_list + [x_sh_last]
+                    x_sh_list.append(x_sh_last)
 
                 x_sh_list_x = [e[0] for e in x_sh_list]
                 x_sh_list_y = [e[1] for e in x_sh_list]
 
-                plt.plot(x_sh_list_x, x_sh_list_y, zorder=2, color='b', linestyle=self.parameters.robot_linestyles[len(robots) - 1 - i], linewidth=2)
+                plt.plot(x_sh_list_x, x_sh_list_y, zorder=2, color='b',
+                        linestyle=self.parameters.robot_linestyles[len(robots) - 1 - i], linewidth=2)
+
+            # ⬇️ Move this outside the per-robot loop
+            for robot in robots:
+                if hasattr(robot, 'assigned_task') and robot.assigned_task:
+                    x0, y0 = robot.x_0
+                    xt, yt = robot.assigned_task.target
+                    dx, dy = xt - x0, yt - y0
+
+                    plt.arrow(x0, y0, dx, dy, head_width=0.3, head_length=0.3,
+                            fc='purple', ec='purple', linestyle='--', alpha=0.6, zorder=1)
+
+                    mid_x = (x0 + xt) / 2
+                    mid_y = (y0 + yt) / 2
+                    plt.text(mid_x, mid_y + 0.7, f"R{robot.id}", fontsize=7,
+                            color='purple', ha='center', va='center', zorder=2)
+
         plt.show()
+
 
     def get_map_drawing_step_by_step(self, robots, tasks, k, legend=False, labels=False):
         fig = plt.figure(figsize=(7, 7))
@@ -264,12 +315,25 @@ class Drawer(object):
 
         x_tasks = []
         y_tasks = []
+
         for task in tasks:
-            x_tasks = x_tasks + [task.target[0]]
-            y_tasks = y_tasks + [task.target[1]]
+            x = task.target[0]
+            y = task.target[1]
+            urgency = getattr(task, 'urgency', 1.0)
+
+            color = plt.cm.Reds(min(urgency / 10.0, 1.0))
+            plt.scatter(x, y, color=color, marker="o", s=200)
+            plt.text(x, y + 1.0, f"U:{task.urgency:.1f}\nT:{task.time_waited}",
+            fontsize=7, color='gray', ha='center', va='center', zorder=3)
+
+
+            # Add time waited label just above the task
+            # plt.text(x, y + 0.7, f"T:{task.time_waited}", fontsize=6, color='gray', ha='center')
+
             if labels:
-                plt.text(task.target[0], task.target[1], str(task.id), color='w', fontsize=9, fontweight='bold', horizontalalignment='center', verticalalignment='center')
-        plt.scatter(x_tasks, y_tasks, color='g', marker="o", s=200, label="Targets")
+                plt.text(x, y, str(task.id), color='white', fontsize=9, weight='bold', ha='center', va='center')
+
+
 
         x_goal = self.parameters.goal[0]
         y_goal = self.parameters.goal[1]
@@ -278,4 +342,7 @@ class Drawer(object):
         plt.grid(which='minor', linestyle=":", color='k', lw=0.5)  # ,marker="D")
         if legend:
             legend = plt.legend(bbox_to_anchor=(0., 1.05, 1., 0.05), loc='lower left', ncol=5, mode="expand", borderaxespad=0., handletextpad=0.4, fontsize=12, markerscale=0.8)
+            sm = plt.cm.ScalarMappable(cmap='Reds', norm=plt.Normalize(vmin=1, vmax=10))
+            sm.set_array([])
+            plt.colorbar(sm, ax=ax, label="Task Urgency")
         return fig, ax

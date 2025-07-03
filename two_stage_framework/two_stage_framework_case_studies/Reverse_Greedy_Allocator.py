@@ -17,32 +17,7 @@ class Reverse_Greedy_Allocator(Greedy_Allocator):
         reverse_greedy_solution=super().solve_problem(N)
         return reverse_greedy_solution
 
-    # def make_step(self,V_k_1,R_k_1):
-    #     rho_F_vec,f_F_vec,t_F_vec=self.collect_bets(V_k_1,R_k_1)
-    #     i_r_k=np.nanargmax(rho_F_vec)
-
-    #     r_k=self.robots[i_r_k]
-    #     a_k=r_k.a_r
-    #     self.history.add((r_k.id,a_k.id))
-
-    #     r_k.S_r.remove(a_k)
-    #     r_k.f_r=r_k.f_r+r_k.rho_r
-    #     if len([r for r in self.robots if a_k in r.S_r])==1:
-    #         V_k=V_k_1.remove(a_k)
-    #         R_k=Set([r for r in self.robots if r.a_r==a_k])
-    #     else:
-    #         V_k=V_k_1
-    #         R_k=Set([r_k])
-
-    #     """
-    #     print("\n Step:\n")
-    #     print("   - rho_F_vec=",rho_F_vec)
-    #     print("   - f_F_vec=",f_F_vec)
-    #     print("   - t_F_vec=",t_F_vec)
-    #     print("   - (a_k,r_k)=(",str(a_k.id),",",str(r_k.id),")")
-    #     """
-    #     return V_k,R_k
-
+ 
     def calculate_hazard_penalty(self, r, a):
         """Calculate penalty based on the robot's proximity to hazards."""
         hazard_penalty = 0
@@ -60,6 +35,16 @@ class Reverse_Greedy_Allocator(Greedy_Allocator):
             return 0  # No penalty for tasks if battery is sufficient
         else:
             return (battery_threshold - r.battery_level) * 0.1  # Increasing penalty as battery decreases
+        
+    def compute_priority_score(self, r, a, weights):
+        distance_to_task = distance(r.x_0, a.x_0)  # assuming 'a' has x_0 attribute
+        hazard_penalty = self.calculate_hazard_penalty(r, a)
+        task_urgency = getattr(a, 'urgency', 1.0)  # fallback if not set
+        robot_health = r.battery_level * r.sensor_health
+
+        α, β, γ, δ = weights
+        return α * distance_to_task + β * hazard_penalty - γ * task_urgency - δ * robot_health
+
         
     def should_reassign(self, r):
         """Determine whether a robot should reassign its task based on battery level or hazard proximity."""
@@ -134,22 +119,6 @@ class Reverse_Greedy_Allocator(Greedy_Allocator):
 
         return V_k, R_k
 
-    # def place_bet(self,r,V_k_1):
-    #     rho_r=-float('inf')
-    #     a_r=None
-    #     bet_time=0
-    #     for a in copy.copy(V_k_1).intersect(r.S_r):
-    #         S_r_a=copy.copy(r.S_r).remove(a)
-    #         f_r_a,time_f_r_a=r.objective.get_value(S_r_a)
-    #         rho_r_a=f_r_a-r.f_r
-    #         if rho_r_a>rho_r:
-    #             rho_r=rho_r_a
-    #             a_r=a
-    #         bet_time=bet_time+time_f_r_a
-    #     r.rho_r=rho_r
-    #     r.a_r=a_r
-    #     return bet_time
-
     def place_bet(self, r, V_k_1):
         rho_r = float('-inf')  # Reverse greedy chooses the *highest gain*, starting from -inf
         a_r = None
@@ -170,14 +139,26 @@ class Reverse_Greedy_Allocator(Greedy_Allocator):
         r.a_r = a_r
         return bet_time
     
+    # def reassign_task(self, r, V_k_1):
+    #     alternative_tasks = [a for a in V_k_1 if self.is_safe_assignment(r, a)]
+        
+    #     if alternative_tasks:
+    #         return max(alternative_tasks, key=lambda a: self.get_task_priority(r, a))  
+    #     else:
+    #         print(f"Warning: No safe tasks for robot {r.id}, assigning default task.")
+    #         return next(iter(V_k_1), None)  # Assign first available task, or None if empty
+        
     def reassign_task(self, r, V_k_1):
         alternative_tasks = [a for a in V_k_1 if self.is_safe_assignment(r, a)]
         
         if alternative_tasks:
-            return max(alternative_tasks, key=lambda a: self.get_task_priority(r, a))  
+            weights = (1.0, 2.0, 1.5, 0.5)  # Tune as needed
+            return min(alternative_tasks, key=lambda a: self.compute_priority_score(r, a, weights))
+            # return max(alternative_tasks, key=lambda a: self.get_task_priority(r, a))  
         else:
             print(f"Warning: No safe tasks for robot {r.id}, assigning default task.")
             return next(iter(V_k_1), None)  # Assign first available task, or None if empty
+
 
 
 
