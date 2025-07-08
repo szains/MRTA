@@ -140,8 +140,6 @@ parameters.task_priority = {
     "vi": 2,
     "vii": 4
 }
-
-
 parameters.robot_positions = [(0,6), (8,12), (10,0), (2,11), (6,6)]
 
 
