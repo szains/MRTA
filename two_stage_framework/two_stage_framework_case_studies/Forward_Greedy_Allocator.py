@@ -63,14 +63,25 @@ class Forward_Greedy_Allocator(Greedy_Allocator):
 
         return V_k, R_k
     
+    # def calculate_hazard_penalty(self, r, a):
+    #     """Calculate penalty based on the robot's proximity to hazards."""
+    #     hazard_penalty = 0
+    #     if hasattr(self.function_frame, "hazards"):  # Ensure hazards exist
+    #         for hazard in self.function_frame.hazards:
+    #             distance_to_hazard = distance(r.x_0, hazard)
+    #             hazard_penalty += np.exp(-distance_to_hazard)  # Penalize tasks near hazards
+    #     return hazard_penalty
+
     def calculate_hazard_penalty(self, r, a):
-        """Calculate penalty based on the robot's proximity to hazards."""
+        """Calculate penalty based on the robot's proximity to valid hazards."""
         hazard_penalty = 0
-        if hasattr(self.function_frame, "hazards"):  # Ensure hazards exist
+        if hasattr(self.function_frame, "hazards"):
             for hazard in self.function_frame.hazards:
-                distance_to_hazard = distance(r.x_0, hazard)
-                hazard_penalty += np.exp(-distance_to_hazard)  # Penalize tasks near hazards
+                if isinstance(hazard, (tuple, list, np.ndarray)) and len(hazard) == 2:
+                    distance_to_hazard = distance(r.x_0, hazard)
+                    hazard_penalty += np.exp(-distance_to_hazard)
         return hazard_penalty
+
     
     def get_battery_factor(self, r):
         """Adjust task allocation based on battery level."""

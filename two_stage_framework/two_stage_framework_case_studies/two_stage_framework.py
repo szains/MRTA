@@ -15,7 +15,7 @@ from Graphs import plot_task_completion, plot_robot_utilization, plot_hazard_avo
 from Graphs import plot_hazard_avoidance
 from Graphs import plot_task_priority_heatmap, plot_priority_completion
 
-
+from X_set import X_set
 from collections import Counter
 
 def compute_robot_utilization(allocation, robot_ids):
@@ -61,6 +61,21 @@ def sample_Tau_Ys(self,p_f,ys_k_1):
     ys_0=~ys_k_1
     ys_1=ys_k_1
 
+     # 🔐 Add this consistency check before dot product
+    if self.X.adj_matrix.shape[0] != ys_1.shape[1]:
+        raise ValueError(
+            f"Mismatch: adj_matrix is {self.X.adj_matrix.shape}, but ys_1 has {ys_1.shape[1]} states. "
+            "Make sure you regenerated X and its adjacency matrix after updating hazards or map."
+        )
+
+    print("adj_matrix shape:", self.X.adj_matrix.shape)
+    print("ys_1 shape:", ys_1.shape)
+
+    print("DEBUG — len(self.X):", len(self.X))
+    print("DEBUG — ys_1.shape[1]:", ys_1.shape[1])
+
+
+
     N_ys=self.X.adj_matrix.T.dot(ys_1.T.astype(int)).T
     D_ys=self.X.adj_diag_matrix.T.dot(ys_1.T.astype(int)).T
 
@@ -73,9 +88,25 @@ def sample_Tau_Ys(self,p_f,ys_k_1):
     return ys_k
 
 # Parameters
-example_name="case_study_1"
+
+
+
+
+example_name="case_study_13"
 parameters=Parameters(name=example_name)
 open_case_study=False
+
+rel_path = '/case_studies/' + example_name + '/'
+path = os.getcwd() + rel_path
+
+if not os.path.exists(path):
+    os.makedirs(path)
+
+parameters_file={"Read":open_case_study,"Name":"parameters"}
+samples_file={"Read":open_case_study,"Name":"samples"}
+function_frame_file={"Read":open_case_study,"Name":"function_frame"}
+solution_file={"Read":open_case_study,"Name":"solution"}
+
 
 parameters.map=np.array([[1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1],
                          [1,0,0,0,0,0,1,1,0,1,0,0,1,0,0,0,1],
@@ -91,45 +122,100 @@ parameters.map=np.array([[1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1],
                          [1,0,0,0,0,0,1,1,0,0,1,0,0,0,0,1,1],
                          [1,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1,1]])
 
-parameters.targets=[(3,9),(5,1),(8,6),(11,11),(14,1)]
-parameters.task_ids=["i","ii","iii","iv","v"]
 
-#task priority defines
-task_priority = {
+# parameters.targets = [(3,9), (5,1), (8,6), (11,11), (14,1), (2,6), (7,9)]
+# parameters.targets = [(3,9), (5,1), (8,6), (11,11), (14,1), (2,6), (7,9)]
+# parameters.task_ids = ["i", "ii", "iii", "iv", "v", "vi"]
+
+parameters.task_ids = ["i", "ii", "iii", "iv", "v", "vi", "vii"]
+parameters.targets = [(3,9), (5,1), (8,6), (11,11), (14,1), (2,6), (7,9)]
+
+
+parameters.task_priority = {
     "i": 3,
     "ii": 5,
     "iii": 2,
     "iv": 4,
-    "v": 1
+    "v": 1,
+    "vi": 2,
+    "vii": 4
 }
-parameters.task_priority = task_priority
 
 
-parameters.robot_positions=[(0,6),(8,12),(10,0)]
-parameters.robot_ids=["1","2","3"]
-parameters.robot_linestyles=[(0,()),(0,(3,3)),(0,(1,2))]
+parameters.robot_positions = [(0,6), (8,12), (10,0), (2,11), (6,6)]
 
-parameters.y_0=[[(13,12)],[(2,1)],[(11,2)],[(3,11)],[(13,6)]]
-parameters.hazard_ids=["a","b","c","d","e"]
-parameters.p_f=[0.002,0.004,0.012,0.012,0.012]
+
+parameters.robot_ids = ["1", "2", "3", "4", "5"]
+parameters.robot_linestyles = [
+    (0, ()),           # solid
+    (0, (3,3)),        # dashed
+    (0, (1,2)),        # dotted
+    (0, (2,2,1,2)),    # dash-dot
+    (0, (5,1))         # custom pattern
+]
+
+parameters.y_0 = [
+    [(12,12)],  # was (13,12)
+    [(2,1)],
+    [(11,2)],
+    [(3,11)],
+    [(12,6)],  # also change (13,6) if needed
+    [(5,10)],
+    [(7,3)]
+]
+
+for group in parameters.y_0:
+    for (y, x) in group:
+        if y >= parameters.map.shape[0] or x >= parameters.map.shape[1]:
+            print(f"⚠️ Hazard ({y},{x}) is out of map bounds!")
+parameters.hazard_ids = ["a", "b", "c", "d", "e", "f", "g"]
+parameters.p_f = [0.002, 0.004, 0.012, 0.012, 0.012, 0.01, 0.008]
+
+
+
 
 parameters.goal=(16,9)
 parameters.E=5000
 parameters.N=75
 parameters.p_stay=0
 
-parameters.generate_obsticles()
-parameters.generate_Hazards()
-parameters.generate_Tasks()
-parameters.generate_Robots()
+if not parameters_file["Read"]:
+    parameters.generate_obsticles()
+    # ✅ Build X using a temporary planner
+    parameters.X = X_set(Path_Planner(parameters))
 
-parameters.generate_Tau_X=generate_Tau_X
-parameters.sample_Tau_Ys=sample_Tau_Ys
+    # 🧹 Filter invalid hazard positions BEFORE generating hazards
+    parameters.y_0 = [
+        [pos for pos in group if pos in parameters.X]
+        for group in parameters.y_0
+    ]
 
-parameters_file={"Read":open_case_study,"Name":"parameters"}
-samples_file={"Read":open_case_study,"Name":"samples"}
-function_frame_file={"Read":open_case_study,"Name":"function_frame"}
-solution_file={"Read":open_case_study,"Name":"solution"}
+    parameters.generate_Hazards()
+
+    parameters.X = None
+    parameters.generate_Tasks()
+
+    parameters.X = X_set(Path_Planner(parameters))
+    print("DEBUG — parameters.X is", type(parameters.X))
+    # ✅ Now that X has been created, it's safe to validate hazards
+    if parameters.X is not None:
+        invalid_hazards = []
+        for group in parameters.y_0:
+            for pos in group:
+                if pos not in parameters.X:
+                    invalid_hazards.append(pos)
+
+    if invalid_hazards:
+        print("🚨 Invalid hazard positions not found in X:", invalid_hazards)
+    parameters.generate_Robots()
+
+    parameters.generate_Tau_X = generate_Tau_X
+    parameters.sample_Tau_Ys = sample_Tau_Ys
+
+    outfile = open(path + parameters_file["Name"], 'wb')
+    pickle.dump(parameters, outfile)
+    outfile.close()
+
 
 ### Main ###
 warnings.filterwarnings("ignore")
@@ -157,6 +243,53 @@ parameters.solution_file=solution_file
 # Setting up
 path_planner=Path_Planner(parameters)
 path_planner.set_up(path)
+parameters.X = path_planner.X
+print((2,7) in parameters.X)  # This should print False
+print((2,6) in parameters.X)
+print((2,8) in parameters.X)
+
+print((2,6) in parameters.X)
+print((2,8) in parameters.X)
+print((7,12) in parameters.X)
+print((7,14) in parameters.X)
+
+print((7,11) in parameters.X)
+print((7,13) in parameters.X)
+print((6,12) in parameters.X)
+
+print((7,10) in parameters.X)
+print((7,8) in parameters.X)
+print((6,11) in parameters.X)
+print((8,11) in parameters.X)
+
+print(f"Total walkable positions: {len(parameters.X)}")
+print("First 10 valid positions:", parameters.X[:10])
+
+valid_positions = list(parameters.X)
+print("Total:", len(valid_positions))
+print(valid_positions)
+
+print("Current task targets:", parameters.targets)
+
+# 🧪 Inspect walkability of robot start positions
+for pos in parameters.robot_positions:
+    print(f"{pos} walkable:", pos in parameters.X)
+
+# 🚨 Validate robot starting positions
+for pos in parameters.robot_positions:
+    if pos not in parameters.X:
+        print(f"🚨 Robot position {pos} is not in X! Check map and update robot_positions.")
+
+for pos in parameters.targets:
+    if pos not in parameters.X:
+        print(f"🚨 Task target {pos} is not in X!")
+
+
+parameters.y_0 = [
+    [pos for pos in group if pos in parameters.X]
+    for group in parameters.y_0
+]
+
 
 Drawer(path_planner).draw_full_example()
 
@@ -184,10 +317,7 @@ else:
     allocator_fg.postprocess_solution(fg_solution)
     fg_solution.save_solution(path+parameters.solution_file["Name"]+"_fg")
 allocator_fg.show_solution(fg_solution)
-# print(fg_solution.allocation.__dict__)
-#allocator_fg.draw_solution_step_by_step(fg_solution,5)
-# print("FG Allocation contents:", fg_solution.allocation.__dict__)
-# print("Allocation dir():", dir(fg_solution.allocation))
+
 for e in fg_solution.allocation:
     print("FG allocation element:", e)
     break  # Just to peek at one element

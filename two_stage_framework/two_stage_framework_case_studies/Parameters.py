@@ -7,6 +7,7 @@ class Parameters(object):
     def __init__(self,name=None):
         self.name=name
 
+ 
     def generate_obsticles(self):
         size=(self.map.shape[1],self.map.shape[0])
         obsticles=[]

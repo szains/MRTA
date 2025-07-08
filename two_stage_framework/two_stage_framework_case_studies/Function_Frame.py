@@ -81,3 +81,34 @@ class Function_Frame(DMatrix):
 
     def get_value(self,r_id,S_r_id):
         return self["value"].get([r_id,S_r_id]),self["time"].get([r_id,S_r_id])
+    
+    # def find_best_alternative(self, robot_id, task_id):
+    #     candidates = self.function_frame.get_feasible_tasks(robot_id)
+    #     scores = {}
+
+    #     for candidate in candidates:
+    #         hazard_score = self.function_frame.estimate_hazard(candidate)
+    #         path_score = self.function_frame.estimate_path_safety(robot_id, candidate)
+    #         priority = self.function_frame.get_task_priority(candidate)
+
+    #         scores[candidate] = (priority * path_score) / (1 + hazard_score)
+
+    #     return max(scores, key=scores.get)
+    
+    # def get_feasible_tasks(self, robot_id):
+    # # Return list of tasks that are reachable or relevant to this robot
+    #     return self.parameters.task_ids
+
+    # def estimate_hazard(self, task_id):
+    #     # Estimate hazard around the task’s location
+    #     task = self.parameters.tasks[task_id]
+    #     return np.mean(self.path_planner.hazard_map[task])
+
+    # def estimate_path_safety(self, robot_id, task_id):
+    #     # Return a simple safety score based on predicted path
+    #     path = self.path_planner.predict_path(robot_id, task_id)
+    #     return 1.0 - np.mean(self.path_planner.hazard_map[path])
+
+    # def get_task_priority(self, task_id):
+    #     return self.parameters.task_priority.get(task_id, 1)
+

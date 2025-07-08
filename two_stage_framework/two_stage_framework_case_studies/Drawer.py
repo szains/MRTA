@@ -65,7 +65,7 @@ class Drawer(object):
             urgency = getattr(task, 'urgency', 1.0)
 
             color = plt.cm.Reds(min(urgency / 10.0, 1.0))
-            plt.scatter(x, y, color=color, marker="o", s=200)
+            plt.scatter(x, y, color='yellow', marker="o", s=200)
 
             plt.text(x, y + 1.0, f"U:{task.urgency:.1f}\nT:{task.time_waited}",
             fontsize=7, color='gray', ha='center', va='center', zorder=3)
@@ -75,7 +75,7 @@ class Drawer(object):
             # plt.text(x, y + 0.7, f"T:{task.time_waited}", fontsize=6, color='gray', ha='center')
 
             if labels:
-                plt.text(x, y, str(task.id), color='white', fontsize=9, weight='bold', ha='center', va='center')
+                plt.text(x, y, str(task.id), color='black', fontsize=9, weight='bold', ha='center', va='center')
 
 
 
