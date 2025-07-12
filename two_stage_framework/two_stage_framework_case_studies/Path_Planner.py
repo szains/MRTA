@@ -17,42 +17,6 @@ class Path_Planner(object):
     def __init__(self,parameters):
         self.parameters=parameters
     
-    #old code is here
-
-    # def set_up(self,path):
-    #     print("Setting up path planner...\n")
-    #     print("...Defining sets...")
-    #     self.X=X_set(self)
-    #     self.U_x=U_x_function(self)
-    #     print("...Defining state transition dynamics...")
-    #     self.Tau_X=Tau_X_dmatrix(self)
-    #     self.y_sampler=y_sampler(self,path)
-    #     print("...Preparing matrices for dynamic programming algorithm...")
-    #     p_H_k_matrix.set_up(self)
-    #     print("Finished setting up path planner!\n")
-
-    # def set_up(self, path):
-    #     print("Setting up path planner...\n")
-    #     print("...Defining sets...")
-    #     self.X = X_set(self)
-
-    #     # Debugging: Check the size of X_set
-    #     print(f"Debugging X-set size: len(self.X) = {len(self.X)}")
-
-    #    # Ensure all hazard locations are included in X
-    #     for hazard in self.parameters.y_0:
-    #         for h_pos in hazard:  # Each hazard is a list of positions
-    #             if h_pos not in self.X:  # No need for `.positions`
-    #                 self.X.add(h_pos)  # Use `add()` since `X_set` extends `Set`
-
-
-    #     self.U_x = U_x_function(self)
-    #     print("...Defining state transition dynamics...")
-    #     self.Tau_X = Tau_X_dmatrix(self)
-    #     self.y_sampler = y_sampler(self, path)
-    #     print("...Preparing matrices for dynamic programming algorithm...")
-    #     p_H_k_matrix.set_up(self)
-    #     print("Finished setting up path planner!\n")
     def set_up(self, path):
         print("Setting up path planner...\n")
         print("...Defining sets...")
@@ -80,6 +44,24 @@ class Path_Planner(object):
         print("...Preparing matrices for dynamic programming algorithm...")
         p_H_k_matrix.set_up(self)
         print("Finished setting up path planner!\n")
+
+    def compute_path(self, start_pos, goal_pos):
+        targets = [goal_pos]  # we want path to a single goal
+        V_ret, Mu, V = self.get_solution(targets, goal_pos, start_pos, print_progress=False)
+
+        # You need q_0 for simulate_path — set it as empty set
+        q_0 = set([])
+        path_matrix = self.simulate_path(Mu, start_pos, q_0)
+
+        # Extract actual path from matrix
+        raw_path = []
+        for k in range(path_matrix.matrix.shape[0]):
+            for idx, val in enumerate(path_matrix.matrix[k]):
+                if val:
+                    raw_path.append(self.X[idx])
+                    break
+        return raw_path
+
 
 
 

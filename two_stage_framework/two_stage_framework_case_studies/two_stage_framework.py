@@ -17,6 +17,8 @@ from Graphs import plot_task_priority_heatmap, plot_priority_completion
 
 from X_set import X_set
 from collections import Counter
+from matplotlib import pyplot as plt
+import time
 
 def compute_robot_utilization(allocation, robot_ids):
     task_counts = Counter([robot for robot, _ in allocation])
@@ -108,6 +110,8 @@ function_frame_file={"Read":open_case_study,"Name":"function_frame"}
 solution_file={"Read":open_case_study,"Name":"solution"}
 
 
+
+
 parameters.map=np.array([[1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1],
                          [1,0,0,0,0,0,1,1,0,1,0,0,1,0,0,0,1],
                          [1,0,1,0,1,0,1,1,0,1,0,0,0,0,1,0,1],
@@ -130,6 +134,9 @@ parameters.map=np.array([[1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1],
 parameters.task_ids = ["i", "ii", "iii", "iv", "v", "vi", "vii"]
 parameters.targets = [(3,9), (5,1), (8,6), (11,11), (14,1), (2,6), (7,9)]
 
+# parameters.task_ids = ["i", "ii", "iii"]
+# parameters.targets = [(3,9), (5,1), (8,6)]
+
 
 parameters.task_priority = {
     "i": 3,
@@ -140,7 +147,15 @@ parameters.task_priority = {
     "vi": 2,
     "vii": 4
 }
+
+# parameters.task_priority = {
+#     "i": 3,
+#     "ii": 5,
+#     "iii": 2
+# }
 parameters.robot_positions = [(0,6), (8,12), (10,0), (2,11), (6,6)]
+
+
 
 
 parameters.robot_ids = ["1", "2", "3", "4", "5"]
@@ -151,6 +166,9 @@ parameters.robot_linestyles = [
     (0, (2,2,1,2)),    # dash-dot
     (0, (5,1))         # custom pattern
 ]
+
+
+robot_start_lookup = {str(rid): pos for rid, pos in zip(parameters.robot_ids, parameters.robot_positions)}
 
 parameters.y_0 = [
     [(12,12)],  # was (13,12)
@@ -289,7 +307,10 @@ parameters.y_0 = [
 ]
 
 
-Drawer(path_planner).draw_full_example()
+# Drawer(path_planner).draw_full_example()
+
+
+
 
 # Function frame
 if parameters.function_frame_file["Read"]:
@@ -304,50 +325,68 @@ else:
     pickle.dump(function_frame,outfile)
     outfile.close()
 
+
+
 # Forward greedy
-allocator_fg=Forward_Greedy_Allocator(function_frame)
+allocator_fg = Forward_Greedy_Allocator(function_frame)
+
 if parameters.solution_file["Read"]:
-    infile=open(path+parameters.solution_file["Name"]+"_fg",'rb')
-    fg_solution=pickle.load(infile)
+    infile = open(path + parameters.solution_file["Name"] + "_fg", 'rb')
+    fg_solution = pickle.load(infile)
     infile.close()
+    fg_time = None
 else:
-    fg_solution=allocator_fg.solve_problem()
+    start_fg = time.time()
+    fg_solution = allocator_fg.solve_problem()
     allocator_fg.postprocess_solution(fg_solution)
-    fg_solution.save_solution(path+parameters.solution_file["Name"]+"_fg")
+    end_fg = time.time()
+    fg_time = end_fg - start_fg
+    fg_solution.save_solution(path + parameters.solution_file["Name"] + "_fg")
 allocator_fg.show_solution(fg_solution)
 
-for e in fg_solution.allocation:
-    print("FG allocation element:", e)
-    break  # Just to peek at one element
+
 
 
 # Reverse greedy
 allocator_rg=Reverse_Greedy_Allocator(function_frame)
 if parameters.solution_file["Read"]:
-    infile=open(path+parameters.solution_file["Name"]+"_rg",'rb')
-    rg_solution=pickle.load(infile)
+    infile = open(path + parameters.solution_file["Name"] + "_rg", 'rb')
+    rg_solution = pickle.load(infile)
     infile.close()
+    rg_time = None
 else:
-    rg_solution=allocator_rg.solve_problem()
+    start_rg = time.time()
+    rg_solution = allocator_rg.solve_problem()
     allocator_rg.postprocess_solution(rg_solution)
-    rg_solution.save_solution(path+parameters.solution_file["Name"]+"_rg")
+    end_rg = time.time()
+    rg_time = end_rg - start_rg
+    rg_solution.save_solution(path + parameters.solution_file["Name"] + "_rg")
+
 allocator_rg.show_solution(rg_solution)
+
+
 
 # Brute force
 allocator_bf=Brute_Force_Allocator(function_frame)
 if parameters.solution_file["Read"]:
-    infile=open(path+parameters.solution_file["Name"]+"_bf",'rb')
-    bf_solution=pickle.load(infile)
+    infile = open(path + parameters.solution_file["Name"] + "_bf", 'rb')
+    bf_solution = pickle.load(infile)
     infile.close()
-    infile=open(path+parameters.solution_file["Name"]+"_worst",'rb')
-    worst_solution=pickle.load(infile)
+    infile = open(path + parameters.solution_file["Name"] + "_worst", 'rb')
+    worst_solution = pickle.load(infile)
     infile.close()
+    bf_time = None  # Skipped timing
 else:
-    bf_solution,worst_solution=allocator_bf.solve_problem()
+    start_bf = time.time()
+    bf_solution, worst_solution = allocator_bf.solve_problem()
     allocator_bf.postprocess_solution(bf_solution)
     allocator_bf.postprocess_solution(worst_solution)
-    bf_solution.save_solution(path+parameters.solution_file["Name"]+"_bf")
-    worst_solution.save_solution(path+parameters.solution_file["Name"]+"_worst")
+    end_bf = time.time()
+    bf_time = end_bf - start_bf
+
+    bf_solution.save_solution(path + parameters.solution_file["Name"] + "_bf")
+    worst_solution.save_solution(path + parameters.solution_file["Name"] + "_worst")
+
 
 allocator_bf.show_solution(bf_solution)
 allocator_bf.show_solution(worst_solution)
@@ -358,7 +397,98 @@ task_completion_data = [
     len(set(task for _, task in bf_solution.allocation))
 ]
 
+
+# ✅ Tag each robot and task with link info from FG allocation
+task_lookup = {str(task.id): task for task in parameters.tasks}
+robot_lookup = {str(robot.id): robot for robot in parameters.robots}
+
+for robot_key, task_id in fg_solution.allocation:
+    task = task_lookup.get(str(task_id))
+    if not task:
+        continue
+
+    if hasattr(robot_key, "id"):
+        robot_id = str(robot_key.id)
+    else:
+        robot_id = str(robot_key).split("_")[1] if "_" in str(robot_key) else str(robot_key)
+
+    robot = robot_lookup.get(robot_id)
+    if robot:
+        robot.assigned_task = task
+        task.completed_by = robot.id
+
+
+
+for robot in parameters.robots:
+    if hasattr(robot, 'assigned_task') and robot.assigned_task:
+        start_pos = robot_start_lookup.get(str(robot.id))
+        if start_pos:
+            robot.path = path_planner.compute_path(start_pos, robot.assigned_task.target)
+
+drawer = Drawer(path_planner)
+# 🔄 Draw paths for robots (FG solution)
+drawer.draw_path_for_all_robots(fg_solution.path, parameters.robots, parameters.tasks)
+
+# 🕒 Embed timing labels directly on the figure
+fig, ax = plt.gcf(), plt.gca()
+
+if fg_time is not None and rg_time is not None:
+    ax.text(0.5, -0.08,
+            f"🟢 FG Time: {fg_time:.3f}s    🔵 RG Time: {rg_time:.3f}s",
+            transform=ax.transAxes,
+            fontsize=10,
+            ha='center',
+            bbox=dict(facecolor='white', edgecolor='black', alpha=0.85, boxstyle='round,pad=0.4'))
+else:
+    ax.text(0.5, -0.08,
+            "FG/RG loaded from file — timing unavailable",
+            transform=ax.transAxes,
+            fontsize=10,
+            ha='center',
+            bbox=dict(facecolor='white', edgecolor='gray', alpha=0.85, boxstyle='round,pad=0.4'))
+
+if bf_time is not None:
+    ax.text(0.5, -0.15,
+            f"🔴 BF Time: {bf_time:.3f}s",
+            transform=ax.transAxes,
+            fontsize=9,
+            ha='center',
+            bbox=dict(facecolor='white', edgecolor='black', alpha=0.8, boxstyle='round,pad=0.3'))
+else:
+    ax.text(0.5, -0.15,
+            "BF loaded from file — timing unavailable",
+            transform=ax.transAxes,
+            fontsize=9,
+            ha='center',
+            bbox=dict(facecolor='white', edgecolor='gray', alpha=0.8, boxstyle='round,pad=0.3'))
+    
+# 🖼 Set viewing limits to prevent cropped arrows or icons
+ax.set_xlim(-1, parameters.map.shape[1] + 1)
+ax.set_ylim(-1, parameters.map.shape[0] + 1)
+
+plt.show()
+
 fg_utilization = compute_robot_utilization(fg_solution.allocation, parameters.robot_ids)
+
+
+for robot_key, task in fg_solution.allocation:
+    # ✅ Handles Robot object, int ID, or string name
+    if hasattr(robot_key, "id"):
+        task.completed_by = robot_key.id
+    elif isinstance(robot_key, int):
+        task.completed_by = robot_key
+    elif isinstance(robot_key, str) and "_" in robot_key:
+        try:
+            task.completed_by = int(robot_key.split("_")[1])
+        except (IndexError, ValueError):
+            print(f"⚠️ Skipping malformed robot name: {robot_key}")
+    else:
+        print(f"⚠️ Unexpected robot identifier type: {robot_key} ({type(robot_key)})")
+
+
+
+
+
 
 plot_task_completion(task_completion_data)
 plot_robot_utilization(fg_utilization)

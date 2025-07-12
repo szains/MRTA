@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.cm as cm
 import matplotlib.colorbar as colorbar
+from matplotlib import colors
 
 class Drawer(object):
     def __init__(self, path_planner):
@@ -11,7 +12,7 @@ class Drawer(object):
         self.parameters = path_planner.parameters
 
     def get_map_drawing(self, robots, tasks, legend=False, labels=False):
-        fig = plt.figure(figsize=(7, 7))
+        fig = plt.figure(figsize=(8, 7))
         #fig=plt.figure(figsize=(7,6))         
         ax = fig.gca()
 
@@ -59,23 +60,70 @@ class Drawer(object):
         # Change color and positions for tasks
         x_tasks = []
         y_tasks = []
+        # for task in tasks:
+        #     x = task.target[0]
+        #     y = task.target[1]
+        #     urgency = getattr(task, 'urgency', 1.0)
+
+        #     color = plt.cm.Reds(min(urgency / 10.0, 1.0))
+        #     plt.scatter(x, y, color='yellow', marker="o", s=200)
+
+        #     plt.text(x, y + 1.0, f"U:{task.urgency:.1f}\nT:{task.time_waited}",
+        #     fontsize=7, color='gray', ha='center', va='center', zorder=3)
+
+
+        #     #Add time waited label just above the task
+        #     # plt.text(x, y + 0.7, f"T:{task.time_waited}", fontsize=6, color='gray', ha='center')
+
+        #     if labels:
+        #         plt.text(x, y, str(task.id), color='black', fontsize=9, weight='bold', ha='center', va='center')
+
+
+        labels_drawn = set()
+
+        urgencies = [getattr(task, 'urgency', 1.0) for task in tasks]
+        min_urgency = min(urgencies)
+        max_urgency = max(urgencies)
+
+
         for task in tasks:
-            x = task.target[0]
-            y = task.target[1]
+            x, y = task.target
             urgency = getattr(task, 'urgency', 1.0)
 
-            color = plt.cm.Reds(min(urgency / 10.0, 1.0))
-            plt.scatter(x, y, color='yellow', marker="o", s=200)
+            if hasattr(task, 'completed_by') and task.completed_by is not None:
+                plt.scatter(x, y, color='gold', marker='*', s=250,
+                            label='Completed Task' if 'Completed Task' not in labels_drawn else "")
+                plt.text(x, y + 0.7, f"✓ R{task.completed_by}", fontsize=8,
+                        color='green', ha='center', va='center')
+                labels_drawn.add("Completed Task")
+            else:
+                color_value = (urgency - min_urgency) / (max_urgency - min_urgency + 1e-6)
+                # color = plt.cm.inferno(color_value)
+                color = plt.cm.plasma(color_value)
 
-            plt.text(x, y + 1.0, f"U:{task.urgency:.1f}\nT:{task.time_waited}",
-            fontsize=7, color='gray', ha='center', va='center', zorder=3)
+                marker_size = 100 + urgency * 10
+
+                # plt.scatter(x, y, color=color, marker="o", s=marker_size)
+                plt.scatter(x, y, color=color, marker="o", s=marker_size, edgecolors='white', linewidths=1.5)
 
 
-            #Add time waited label just above the task
-            # plt.text(x, y + 0.7, f"T:{task.time_waited}", fontsize=6, color='gray', ha='center')
+                urgency_color = 'darkred' if urgency > 6 else 'orange' if urgency > 3 else 'gray'
+                # plt.text(x, y + 0.8, f"U:{task.urgency:.1f}", fontsize=9, fontweight='bold',
+                #     color='black', ha='center', va='center', zorder=4,
+                #     bbox=dict(facecolor='white', edgecolor='none', alpha=0.85, boxstyle='round,pad=0.3'))
+                plt.text(x, y + 0.8, f"U:{task.urgency:.1f}", fontsize=10, fontweight='bold',
+                    color='black', ha='center', va='center', zorder=4,
+                    bbox=dict(facecolor='white', edgecolor='black', linewidth=0.6,
+                            alpha=0.85, boxstyle='round,pad=0.3'))
+
+
+
 
             if labels:
-                plt.text(x, y, str(task.id), color='black', fontsize=9, weight='bold', ha='center', va='center')
+                plt.text(x, y - 0.5, f"ID: {task.id}", fontsize=9, fontweight='bold',
+                        color='blue', ha='center', va='center', zorder=4,
+                        bbox=dict(facecolor='white', edgecolor='black', linewidth=0.6, alpha=0.85, boxstyle='round,pad=0.3'))
+
 
 
 
@@ -85,11 +133,24 @@ class Drawer(object):
         plt.scatter(x_goal, y_goal, color='cyan', marker=">", s=250, label="Goal")  # Cyan color for goal
 
         plt.grid(which='minor', linestyle="--", color='lightgray', lw=0.8)  # Grid lines
-        if legend:
-            legend = plt.legend(bbox_to_anchor=(0., 1.05, 1., 0.05), loc='lower left', ncol=5, mode="expand", borderaxespad=0., handletextpad=0.4, fontsize=12, markerscale=0.8)
-            sm = plt.cm.ScalarMappable(cmap='Reds', norm=plt.Normalize(vmin=1, vmax=10))
-            sm.set_array([])
-            plt.colorbar(sm, ax=ax, label="Task Urgency")
+        legend = ax.legend(
+            loc='upper center',
+            bbox_to_anchor=(0.5, 1.12),  # pushes legend above the map
+            ncol=6,                      # controls number of items per row
+            fontsize=10,
+            frameon=True,
+            markerscale=0.8,
+            handlelength=1.2,
+            title="Legend",
+            borderaxespad=0.4
+        )
+
+
+
+        norm = colors.Normalize(vmin=min_urgency, vmax=max_urgency)
+        sm = plt.cm.ScalarMappable(cmap='inferno', norm=norm)  # matches your task scatter colormap
+        sm.set_array([])
+        plt.colorbar(sm, ax=ax, label="Task Urgency")
         return fig, ax
 
     def draw_hazard_heat_map(self, fig, ax, k):
@@ -196,6 +257,22 @@ class Drawer(object):
                 mid_y = (y0 + yt) / 2
                 plt.text(mid_x, mid_y + 0.7, f"R{robot.id}", fontsize=7,
                         color='purple', ha='center', va='center', zorder=2)
+                
+        for task in tasks:
+            if hasattr(task, 'completed_by') and task.completed_by is not None:
+                for robot in robots:
+                    if robot.id == task.completed_by:
+                        x0, y0 = robot.x_0
+                        xt, yt = task.target
+                        dx, dy = xt - x0, yt - y0
+
+                        plt.arrow(x0, y0, dx, dy, head_width=0.3, head_length=0.3,
+                                fc='green', ec='green', linestyle='-', linewidth=2, alpha=0.9, zorder=3)
+
+                        mid_x = (x0 + xt) / 2
+                        mid_y = (y0 + yt) / 2
+                        plt.text(mid_x, mid_y + 0.5, f"✓ R{robot.id}", fontsize=7,
+                                color='green', ha='center', va='center', zorder=2)
 
         plt.show()
 
@@ -267,12 +344,28 @@ class Drawer(object):
                     mid_y = (y0 + yt) / 2
                     plt.text(mid_x, mid_y + 0.7, f"R{robot.id}", fontsize=7,
                             color='purple', ha='center', va='center', zorder=2)
+                    
+            for task in tasks:
+                if hasattr(task, 'completed_by') and task.completed_by is not None:
+                    for robot in robots:
+                        if robot.id == task.completed_by:
+                            x0, y0 = robot.x_0
+                            xt, yt = task.target
+                            dx, dy = xt - x0, yt - y0
+
+                            plt.arrow(x0, y0, dx, dy, head_width=0.3, head_length=0.3,
+                                    fc='green', ec='green', linestyle='-', linewidth=2, alpha=0.9, zorder=3)
+
+                            mid_x = (x0 + xt) / 2
+                            mid_y = (y0 + yt) / 2
+                            plt.text(mid_x, mid_y + 0.5, f"✓ R{robot.id}", fontsize=7,
+                                    color='green', ha='center', va='center', zorder=2)
 
         plt.show()
 
 
     def get_map_drawing_step_by_step(self, robots, tasks, k, legend=False, labels=False):
-        fig = plt.figure(figsize=(7, 7))
+        fig = plt.figure(figsize=(8, 7))
         ax = fig.gca()
 
         ax.set_xlim([0 - 0.5, self.parameters.size[0] - 1])
@@ -316,22 +409,68 @@ class Drawer(object):
         x_tasks = []
         y_tasks = []
 
+        # for task in tasks:
+        #     x = task.target[0]
+        #     y = task.target[1]
+        #     urgency = getattr(task, 'urgency', 1.0)
+
+        #     color = plt.cm.Reds(min(urgency / 10.0, 1.0))
+        #     plt.scatter(x, y, color=color, marker="o", s=200)
+        #     plt.text(x, y + 1.0, f"U:{task.urgency:.1f}\nT:{task.time_waited}",
+        #     fontsize=7, color='gray', ha='center', va='center', zorder=3)
+
+
+        #     # Add time waited label just above the task
+        #     # plt.text(x, y + 0.7, f"T:{task.time_waited}", fontsize=6, color='gray', ha='center')
+
+        #     if labels:
+        #         plt.text(x, y, str(task.id), color='white', fontsize=9, weight='bold', ha='center', va='center')
+
+        labels_drawn = set()
+
+        urgencies = [getattr(task, 'urgency', 1.0) for task in tasks]
+        min_urgency = min(urgencies)
+        max_urgency = max(urgencies)
+
+
         for task in tasks:
-            x = task.target[0]
-            y = task.target[1]
+            x, y = task.target
             urgency = getattr(task, 'urgency', 1.0)
 
-            color = plt.cm.Reds(min(urgency / 10.0, 1.0))
-            plt.scatter(x, y, color=color, marker="o", s=200)
-            plt.text(x, y + 1.0, f"U:{task.urgency:.1f}\nT:{task.time_waited}",
-            fontsize=7, color='gray', ha='center', va='center', zorder=3)
+            if hasattr(task, 'completed_by') and task.completed_by is not None:
+                plt.scatter(x, y, color='gold', marker='*', s=250,
+                            label='Completed Task' if 'Completed Task' not in labels_drawn else "")
+                plt.text(x, y + 0.7, f"✓ R{task.completed_by}", fontsize=8,
+                        color='green', ha='center', va='center')
+                labels_drawn.add("Completed Task")
+            else:
+                color_value = (urgency - min_urgency) / (max_urgency - min_urgency + 1e-6)
+                # color = plt.cm.inferno(color_value)
+                color = plt.cm.plasma(color_value)
+                marker_size = 100 + urgency * 10
+
+                # plt.scatter(x, y, color=color, marker="o", s=marker_size)
+                plt.scatter(x, y, color=color, marker="o", s=marker_size, edgecolors='white', linewidths=1.5)
 
 
-            # Add time waited label just above the task
-            # plt.text(x, y + 0.7, f"T:{task.time_waited}", fontsize=6, color='gray', ha='center')
+                urgency_color = 'darkred' if urgency > 6 else 'orange' if urgency > 3 else 'gray'
+                # plt.text(x, y + 0.8, f"U:{task.urgency:.1f}", fontsize=9, fontweight='bold',
+                #     color='black', ha='center', va='center', zorder=4,
+                #     bbox=dict(facecolor='white', edgecolor='none', alpha=0.85, boxstyle='round,pad=0.3'))
+                plt.text(x, y + 0.8, f"U:{task.urgency:.1f}", fontsize=10, fontweight='bold',
+                    color='black', ha='center', va='center', zorder=4,
+                    bbox=dict(facecolor='white', edgecolor='black', linewidth=0.6,
+                            alpha=0.85, boxstyle='round,pad=0.3'))
+
+
+
 
             if labels:
-                plt.text(x, y, str(task.id), color='white', fontsize=9, weight='bold', ha='center', va='center')
+                plt.text(x, y - 0.5, f"ID: {task.id}", fontsize=9, fontweight='bold',
+                        color='blue', ha='center', va='center', zorder=4,
+                        bbox=dict(facecolor='white', edgecolor='black', linewidth=0.6, alpha=0.85, boxstyle='round,pad=0.3'))
+
+
 
 
 
@@ -340,9 +479,21 @@ class Drawer(object):
         plt.scatter(x_goal, y_goal, color='g', marker=">", s=250, label="Goal")
 
         plt.grid(which='minor', linestyle=":", color='k', lw=0.5)  # ,marker="D")
-        if legend:
-            legend = plt.legend(bbox_to_anchor=(0., 1.05, 1., 0.05), loc='lower left', ncol=5, mode="expand", borderaxespad=0., handletextpad=0.4, fontsize=12, markerscale=0.8)
-            sm = plt.cm.ScalarMappable(cmap='Reds', norm=plt.Normalize(vmin=1, vmax=10))
-            sm.set_array([])
-            plt.colorbar(sm, ax=ax, label="Task Urgency")
+        legend = ax.legend(
+            loc='upper center',
+            bbox_to_anchor=(0.5, 1.12),  # pushes legend above the map
+            ncol=6,                      # controls number of items per row
+            fontsize=10,
+            frameon=True,
+            markerscale=0.8,
+            handlelength=1.2,
+            title="Legend",
+            borderaxespad=0.4
+        )
+
+
+        norm = colors.Normalize(vmin=min_urgency, vmax=max_urgency)
+        sm = plt.cm.ScalarMappable(cmap='inferno', norm=norm)  # matches your task scatter colormap
+        sm.set_array([])
+        plt.colorbar(sm, ax=ax, label="Task Urgency")
         return fig, ax
